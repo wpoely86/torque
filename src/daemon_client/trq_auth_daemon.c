@@ -23,7 +23,7 @@
 #include "pbs_ifl.h" /* pbs_default, PBS_BATCH_SERVICE_PORT, TRQ_AUTHD_SERVICE_PORT */
 #include "net_connect.h" /* TRQAUTHD_SOCK_NAME */
 #include "../lib/Libnet/lib_net.h" /* start_listener */
-#include "../lib/Libifl/lib_ifl.h" /* process_svr_conn */
+#include "lib_ifl.h" /* process_svr_conn */
 #include "../lib/Liblog/chk_file_sec.h" /* IamRoot */
 #include "../lib/Liblog/pbs_log.h" /* logging stuff */
 #include "../include/log.h"  /* log events and event classes */
@@ -40,6 +40,7 @@ extern pbs_net_t trq_server_addr;
 extern char *trq_hostname;
 
 bool       down_server = false;
+bool       use_log = true;
 static int changed_msg_daem = 0;
 static char *active_pbs_server;
 
@@ -119,7 +120,11 @@ int init_trqauth_log(const char *server_port)
   rc = log_init(NULL, NULL);
   if (rc != PBSE_NONE)
     return(rc);
-  
+  if (use_log == false)
+    {
+    rc = PBSE_NONE;
+    return(rc);
+    }
   log_get_set_eventclass(&eventclass, SETV);
 
   initialize_globals_for_log(server_port);
@@ -261,7 +266,7 @@ void parse_command_line(int argc, char **argv)
             {0,         0,                0,  0 }
   };
 
-  while ((c = getopt_long(argc, argv, "Dd", long_options, &option_index)) != -1)
+  while ((c = getopt_long(argc, argv, "Ddn", long_options, &option_index)) != -1)
     {
     switch (c)
       {
@@ -298,6 +303,13 @@ void parse_command_line(int argc, char **argv)
       case 'd':
         down_server = true;
         break;
+       
+       case 'n':
+
+         use_log=false;
+         fprintf(stderr, "trqauthd logging disabled\n");
+
+         break;
 
       default:
         fprintf(stderr, "Unknown command line option\n");
@@ -421,7 +433,7 @@ int trq_main(
   else if ((rc = load_ssh_key(&the_key)) != PBSE_NONE)
     {
     }
-  else if ((rc = init_trqauth_log(daemon_port)) != PBSE_NONE)
+  else if((rc = init_trqauth_log(daemon_port)) != PBSE_NONE)
     {
     fprintf(stderr, "ERROR: Failed to initialize trqauthd log\n");
     }

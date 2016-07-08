@@ -12,6 +12,66 @@ extern int recorded;
 extern std::string my_placement_type;
 extern std::string thread_type;
 
+const char *alloc_json = "\"allocation\":{\"jobid\":\"666979[0].mgr.bwfor.privat\",\"cpus\":\"\",\"mem\":4203424,\"exclusive\":0,\"cores_only\":0}";
+
+
+START_TEST(test_place_tasks_execution_slots)
+  {
+  const char        *jobid = "1.napali";
+
+  allocation         a(jobid);
+  Chip               c;
+  c.setId(0);
+  c.setThreads(32);
+  c.setCores(16);
+  c.setMemory(6);
+  c.setChipAvailable(true);
+  for (int i = 0; i < 16; i++)
+    c.make_core(i);
+
+  a.cores_only = true;
+
+  c.place_tasks_execution_slots(2, 8, a, CORE);
+  fail_unless(a.cpu_indices.size() == 2);
+  fail_unless(a.cpu_place_indices.size() == 6);
+  
+  c.place_tasks_execution_slots(2, 8, a, CORE);
+  fail_unless(a.cpu_indices.size() == 4);
+  fail_unless(a.cpu_place_indices.size() == 12);
+  fail_unless(c.free_core_count() == 0);
+
+  Chip               c2;
+  c2.setId(0);
+  c2.setThreads(32);
+  c2.setCores(16);
+  c2.setMemory(6);
+  c2.setChipAvailable(true);
+  for (int i = 0; i < 16; i++)
+    c2.make_core(i);
+
+  allocation b(jobid);
+  c2.place_tasks_execution_slots(0, 2, b, THREAD);
+  fail_unless(b.cpu_indices.size() == 0);
+  fail_unless(b.cpu_place_indices.size() == 2, "size is %u", b.cpu_place_indices.size());
+  fail_unless(c2.free_core_count() == 15, "%d are free", c2.free_core_count());
+  }
+END_TEST
+
+
+START_TEST(test_initialize_allocation)
+  {
+  Chip c;
+  std::stringstream out;
+
+  // Make sure this doesn't last forever - we need to handle empty cpus: values
+  c.initialize_allocation(strdup(alloc_json));
+  c.displayAllocationsAsJson(out);
+
+  fail_unless(out.str().find(alloc_json) != std::string::npos, "'%s' does not contain '%s'", out.str().c_str(), alloc_json);
+
+  }
+END_TEST
+
 
 START_TEST(test_place_all_execution_slots)
   {
@@ -564,8 +624,8 @@ END_TEST
 START_TEST(test_how_many_tasks_fit)
   {
   req r;
-  r.set_value("lprocs", "2");
-  r.set_value("memory", "1kb");
+  r.set_value("lprocs", "2", false);
+  r.set_value("memory", "1kb", false);
 
   Chip c;
   c.setThreads(12);
@@ -586,22 +646,32 @@ START_TEST(test_how_many_tasks_fit)
   tasks = c.how_many_tasks_fit(r, 0);
   fail_unless(tasks == 0, "%d tasks fit, expected 0", tasks);
 
+  // Make sure we can do fractional fits
+  c.setCores(1);
+  for (int i = 0; i < 1; i++)
+    c.make_core(i);
+  fail_unless(c.how_many_tasks_fit(r, 0) == 0.5);
+
   c.setCores(2);
+  for (int i = 1; i < 2; i++)
+    c.make_core(i);
   tasks = c.how_many_tasks_fit(r, 0);
-  fail_unless(tasks == 1, "%d tasks fit, expected 0", tasks);
+  fail_unless(tasks == 1, "%d tasks fit, expected 1", tasks);
 
   // make sure that we can handle a request without memory
   req r2;
-  r2.set_value("lprocs", "2");
+  r2.set_value("lprocs", "2", false);
   c.setCores(10);
+  for (int i = 2; i < 10; i++)
+    c.make_core(i);
   fail_unless(c.how_many_tasks_fit(r2, 0) == 5);
 
   // make sure we account for gpus and mics
-  r2.set_value("gpus", "1");
+  r2.set_value("gpus", "1", false);
   fail_unless(c.how_many_tasks_fit(r2, 0) == 0);
-  r2.set_value("gpus", "0");
+  r2.set_value("gpus", "0", false);
   fail_unless(c.how_many_tasks_fit(r2, 0) == 5);
-  r2.set_value("mics", "1");
+  r2.set_value("mics", "1", false);
   fail_unless(c.how_many_tasks_fit(r2, 0) == 0);
   }
 END_TEST
@@ -612,8 +682,8 @@ START_TEST(test_exclusive_place)
   const char *jobid = "1.napali";
   const char *host = "napali";
   req r;
-  r.set_value("lprocs", "2");
-  r.set_value("memory", "1kb");
+  r.set_value("lprocs", "2", false);
+  r.set_value("memory", "1kb", false);
 
   allocation a(jobid);
   a.place_type = exclusive_chip;
@@ -683,7 +753,7 @@ START_TEST(test_exclusive_place)
   req r2;
   allocation a3(jobid);
   a3.place_type = exclusive_none;
-  r2.set_value("lprocs", "32");
+  r2.set_value("lprocs", "32", false);
   thread_type.clear();
   recorded = 0;
   tasks = c3.place_task(r2, a3, 1, host);
@@ -704,7 +774,7 @@ START_TEST(test_exclusive_place)
   thread_type = use_cores;
 
   req r3;
-  r3.set_value("lprocs", "16");
+  r3.set_value("lprocs", "16", false);
   allocation remaining(r3);
   allocation master("2.napali");
 
@@ -867,8 +937,8 @@ START_TEST(test_place_and_free_task)
   const char *jobid = "1.napali";
   const char *host = "napali";
   req r;
-  r.set_value("lprocs", "2");
-  r.set_value("memory", "1kb");
+  r.set_value("lprocs", "2", false);
+  r.set_value("memory", "1kb", false);
 
   allocation a(jobid);
 
@@ -973,6 +1043,8 @@ Suite *numa_socket_suite(void)
   tcase_add_test(tc_core, test_json_constructor);
   tcase_add_test(tc_core, test_basic_constructor);
   tcase_add_test(tc_core, test_place_all_execution_slots);
+  tcase_add_test(tc_core, test_initialize_allocation);
+  tcase_add_test(tc_core, test_place_tasks_execution_slots);
   suite_add_tcase(s, tc_core);
   
   return(s);

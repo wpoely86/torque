@@ -42,6 +42,7 @@ char *path_jobinfo_log;
 pthread_mutex_t *svr_do_schedule_mutex;
 pthread_mutex_t *listener_command_mutex;
 threadpool_t    *task_pool;
+bool ghost_array_recovery = false;
 
 completed_jobs_map_class completed_jobs_map;
 
@@ -63,7 +64,7 @@ ssize_t write_nonblocking_socket(int fd, const void *buf, ssize_t count)
   return(PBSE_NONE);
   }
 
-job_array *get_array(char *id)
+job_array *get_array(const char *id)
   {
   return(NULL);
   }
@@ -149,7 +150,7 @@ int svr_enquejob(job *pjob, int has_sv_qs_mutex, const char *prev_id, bool reser
 
 char *get_variable(job *pjob, const char *variable)
   {
-  return(NULL);
+  return(strdup("napali"));
   }
 
 int safe_strncat(
@@ -250,6 +251,7 @@ int mutex_mgr::lock(){return 0;}
 int  increment_queued_jobs(user_info_holder *uih, char *user_name, job *pjob) {return 0;}
 int relay_to_mom(job **pjob_ptr, batch_request   *request, void (*func)(struct work_task *)) {return 0;}
 int  decrement_queued_jobs(user_info_holder *uih, char *user_name, job *pjob) {return 0;}
+int req_runjob(batch_request *preq) {return(0);}
 void reply_badattr(int code, int aux, svrattrl *pal, struct batch_request *preq) {}
 void req_reject(int code, int aux, struct batch_request *preq, const char *HostName, const char *Msg) {}
 void free_unkn(pbs_attribute *pattr) {}
@@ -304,6 +306,11 @@ int id_map::get_new_id(const char *job_name)
   static int id = 0;
 
   return(id++);
+  }
+
+const char *id_map::get_name(int internal_job_id)
+  {
+  return("1.napali");
   }
 
 id_map job_mapper;
@@ -419,3 +426,52 @@ job::job()
 
 job::~job() {}
 
+int node_avail_complex(
+
+  char *spec,   /* I - node spec */
+  int  *navail, /* O - number available */
+  int  *nalloc, /* O - number allocated */
+  int  *nresvd, /* O - number reserved  */
+  int  *ndown)  /* O - number down      */
+
+  {
+  return(0);
+  }
+
+int lock_ai_mutex(
+
+  job_array  *pa,
+  const char *id,
+  const char *msg,
+  int        logging)
+
+  {
+  return(0);
+  }
+
+int insert_array(
+
+  job_array *pa)
+
+  {
+  return(0);
+  }
+
+void clear_attr(
+
+  pbs_attribute *pattr, /* O */
+  attribute_def *pdef)  /* I */
+
+  {
+  memset(pattr, 0, sizeof(pbs_attribute));
+
+  pattr->at_type = pdef->at_type;
+
+  if ((pattr->at_type == ATR_TYPE_RESC) ||
+      (pattr->at_type == ATR_TYPE_LIST))
+    {
+    CLEAR_HEAD(pattr->at_val.at_list);
+    }
+
+  return;
+  }  /*END clear_attr() */

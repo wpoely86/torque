@@ -295,7 +295,7 @@ int req_stat_job(
     return(rc);
     }
 
-  preq->rq_reply.brp_choice = BATCH_REPLY_CHOICE_Status;
+  set_reply_type(&preq->rq_reply, BATCH_REPLY_CHOICE_Status);
 
   CLEAR_HEAD(preq->rq_reply.brp_un.brp_status);
 
@@ -630,13 +630,20 @@ void req_stat_job_step2(
   else if (type == tjstJob)
     {
     pjob = svr_find_job(preq->rq_ind.rq_status.rq_id, FALSE);
-    
-    if ((rc = status_job(pjob, preq, pal, &preply->brp_un.brp_status, cntl->sc_condensed, &bad)))
-      req_reject(rc, bad, preq, NULL, NULL);
-    else
-      reply_send_svr(preq);
 
-    unlock_ji_mutex(pjob, __func__, "1", LOGLEVEL);
+    if (pjob != NULL)
+      {
+      if ((rc = status_job(pjob, preq, pal, &preply->brp_un.brp_status, cntl->sc_condensed, &bad)))
+        req_reject(rc, bad, preq, NULL, NULL);
+      else
+        reply_send_svr(preq);
+
+      unlock_ji_mutex(pjob, __func__, "1", LOGLEVEL);
+      }
+    else
+      {
+      req_reject(PBSE_JOBNOTFOUND, bad, preq, NULL, NULL);
+      }
     }
   else
     {
@@ -1100,7 +1107,7 @@ int req_stat_que(
 
   preply = &preq->rq_reply;
 
-  preply->brp_choice = BATCH_REPLY_CHOICE_Status;
+  set_reply_type(preply, BATCH_REPLY_CHOICE_Status);
 
   CLEAR_HEAD(preply->brp_un.brp_status);
 
@@ -1352,7 +1359,7 @@ int req_stat_node(
 
   preply = &preq->rq_reply;
 
-  preply->brp_choice = BATCH_REPLY_CHOICE_Status;
+  set_reply_type(preply, BATCH_REPLY_CHOICE_Status);
 
   CLEAR_HEAD(preply->brp_un.brp_status);
 
@@ -1562,7 +1569,7 @@ int req_stat_svr(
   /* allocate a reply structure and a status sub-structure */
 
   preply = &preq->rq_reply;
-  preply->brp_choice = BATCH_REPLY_CHOICE_Status;
+  set_reply_type(preply, BATCH_REPLY_CHOICE_Status);
 
   CLEAR_HEAD(preply->brp_un.brp_status);
 

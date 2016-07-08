@@ -52,6 +52,7 @@ const char *alps_starter_feature   = "alps_login";
 threadpool_t    *task_pool;
 bool             job_mode = false;
 int              can_place = 0;
+pbsnode          napali_node;
 
 
 struct batch_request *alloc_br(int type)
@@ -147,7 +148,7 @@ struct pbsnode *find_nodebyname(const char *nodename)
   if (!strcmp(nodename, "bob"))
     return(&bob);
   else if (!strcmp(nodename, "napali"))
-    return(&bob);
+    return(&napali_node);
   else if (!strcmp(nodename, "waimea"))
     return(&bob);
   else if (!strcmp(nodename, "2"))
@@ -730,8 +731,6 @@ pbsnode::pbsnode(
                                      nd_requestid(), nd_tmp_unlock_count(0)
 
   {
-  struct addrinfo *pAddrInfo;
-
   this->nd_name            = pname;
   this->nd_properties.push_back(this->nd_name);
   this->nd_id              = 1;
@@ -975,6 +974,17 @@ int Machine::place_job(
   return(0);
   }
 
+int Machine::getTotalThreads() const
+ {
+ return(0);
+ }
+
+
+int Machine::getTotalChips() const
+ {
+ return(0);
+ }
+
 int Machine::how_many_tasks_can_be_placed(req &r) const
   {
   return(can_place);
@@ -1035,3 +1045,21 @@ job::job()
 
 job::~job() {}
 
+bool have_incompatible_dash_l_resource(job *pjob)
+  {
+  return(true);
+  }
+
+
+bool internal_job_id_exists(int internal_job_id)
+  {
+  if (internal_job_id < 10)
+    return(true);
+  else
+    return(false);
+  }
+
+bool have_incompatible_dash_l_resource(pbs_attribute *pattr)
+  {
+  return(true);
+  }

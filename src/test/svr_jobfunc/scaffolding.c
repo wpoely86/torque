@@ -48,9 +48,11 @@ user_info_holder users;
 int decrement_count;
 job napali_job;
 std::string set_resource;
-const char *my_conflicting_types[] = { "nodes", "size", "mppwidth", "mem", "hostlist",
-                                       "ncpus", "procs", "pvmem", "pmem", "vmem", "reqattr",
-                                       "software", "geometry", "opsys", "tpn", "trl", NULL };
+const char *incompatible_l[] = { "nodes", "size", "mppwidth", "mem", "hostlist",
+                                 "ncpus", "procs", "pvmem", "pmem", "vmem", "reqattr",
+                                 "software", "geometry", "opsys", "tpn", "trl", NULL };
+bool get_jobs_queue_force_null = false;
+std::string global_log_buf;
 
 
 void remove_server_suffix(
@@ -112,6 +114,9 @@ long attr_ifelse_long(pbs_attribute *attr1, pbs_attribute *attr2, long deflong)
 pbs_queue *get_jobs_queue(job **pjob)
   {
   pbs_queue *pq = (pbs_queue *)calloc(1, sizeof(pbs_queue));
+
+  if (get_jobs_queue_force_null)
+    return(NULL);
 
   pq->qu_qs.qu_type = QTYPE_Unset;
 
@@ -247,8 +252,8 @@ int site_acl_check(job *pjob, pbs_queue *pque)
 
 resource *find_resc_entry(pbs_attribute *pattr, resource_def *rscdf)
   {
-  for (int i = 0; my_conflicting_types[i] != NULL; i++)
-    if (set_resource == my_conflicting_types[i])
+  for (int i = 0; incompatible_l[i] != NULL; i++)
+    if (set_resource == incompatible_l[i])
       return((resource *)1);
 
   return(NULL);
@@ -367,7 +372,11 @@ int unlock_node(struct pbsnode *the_node, const char *id, const char *msg, int l
   return(0);
   }
 
-void log_err(int errnum, const char *routine, const char *text) {}
+void log_err(int errnum, const char *routine, const char *text)
+  {
+  global_log_buf = text;
+  }
+
 void log_record(int eventtype, int objclass, const char *objname, const char *text) {}
 void log_event(int eventtype, int objclass, const char *objname, const char *text) {}
 

@@ -101,7 +101,7 @@
 #include "../lib/Liblog/log_event.h"
 #include "../lib/Liblog/setup_env.h"
 #include "../lib/Liblog/chk_file_sec.h"
-#include "../lib/Libifl/lib_ifl.h"
+#include "lib_ifl.h"
 #include "list_link.h"
 #include "attribute.h"
 #include "server_limits.h"
@@ -275,6 +275,9 @@ int   process_jobs_dirent(const char *);
 int   process_arrays_dirent(const char *, int);
 long  jobid_to_long(std::string);
 bool  is_array_job(std::string);
+
+bool  cray_enabled = false;
+bool  ghost_array_recovery = true;
 
 /* private data */
 
@@ -942,8 +945,6 @@ int initialize_paths()
 int initialize_data_structures_and_mutexes()
 
   {
-  long cray_enabled = FALSE;
-
   svr_do_schedule_mutex = (pthread_mutex_t *)calloc(1, sizeof(pthread_mutex_t));
   pthread_mutex_init(svr_do_schedule_mutex, NULL);
 
@@ -983,8 +984,7 @@ int initialize_data_structures_and_mutexes()
 
   CLEAR_HEAD(svr_newnodes);
 
-  get_svr_attr_l(SRV_ATR_CrayEnabled, &cray_enabled);
-  if (cray_enabled == TRUE)
+  if (cray_enabled == true)
     {
     initialize_login_holder();
     }
@@ -1050,6 +1050,9 @@ int setup_server_attrs(
 
   server.sv_attr[SRV_ATR_TimeoutForJobRequeue].at_val.at_long = TIMEOUT_FOR_JOB_DEL_REQ;
   server.sv_attr[SRV_ATR_TimeoutForJobRequeue].at_flags = ATR_VFLAG_SET;
+
+  server.sv_attr[SRV_ATR_NoteAppendOnError].at_val.at_long = TRUE;
+  server.sv_attr[SRV_ATR_NoteAppendOnError].at_flags = ATR_VFLAG_SET;
 
   server.sv_attr[SRV_ATR_DownOnError].at_val.at_long = TRUE;
   server.sv_attr[SRV_ATR_DownOnError].at_flags = ATR_VFLAG_SET;
@@ -2038,6 +2041,11 @@ int cleanup_recovered_arrays()
 
 
 
+/*
+ * handle_job_and_array_recovery()
+ *
+ * Recovers the job arrays and jobs, and then cleans up the job arrays
+ */
 
 int handle_job_and_array_recovery(
 
@@ -2045,13 +2053,20 @@ int handle_job_and_array_recovery(
 
   {
   int rc;
+  int tmp_rc;
 
-  if ((rc = handle_array_recovery(type)) != PBSE_NONE)
-    return(rc);
-  else if ((rc = handle_job_recovery(type)) != PBSE_NONE)
-    return(rc);
-  else
-    rc = cleanup_recovered_arrays();
+  rc = handle_array_recovery(type);
+  
+  if ((tmp_rc = handle_job_recovery(type)) != PBSE_NONE)
+    {
+    if (rc == PBSE_NONE)
+      rc = tmp_rc;
+    }
+
+  tmp_rc = cleanup_recovered_arrays();
+    
+  if (rc == PBSE_NONE)
+    rc = tmp_rc;
 
   return(rc);
   } /* END handle_job_and_array_recovery() */
@@ -2157,6 +2172,26 @@ void setup_threadpool()
 
 
 
+/*
+ * Sets some server policies which won't change during execution
+ *
+ */
+
+void set_server_policies()
+
+  {
+  long cray = 0;
+  long recover_subjobs = 0;
+
+  if (get_svr_attr_l(SRV_ATR_CrayEnabled, &cray) == PBSE_NONE)
+    cray_enabled = (bool)cray;
+
+  if (get_svr_attr_l(SRV_ATR_GhostArrayRecovery, &recover_subjobs) == PBSE_NONE)
+    ghost_array_recovery = (bool)recover_subjobs;
+
+  } // END set_server_policies()
+
+
 
 /*
  * This file contains the functions to initialize the PBS Batch Server.
@@ -2218,6 +2253,8 @@ int pbsd_init(
     /* 2. set up the various paths and other global variables we need */
     if ((ret = initialize_paths()) != PBSE_NONE)
       return(ret);
+
+    set_server_policies();
 
     initialize_data_structures_and_mutexes();
 
@@ -2365,7 +2402,6 @@ int pbsd_init_job(
   char              job_id[PBS_MAXSVRJOBID+1];
   long              job_atr_hold;
   int               job_exit_status;
-  long              cray_enabled = FALSE;
 
   pjob->ji_momhandle = -1;
 
@@ -2658,9 +2694,8 @@ int pbsd_init_job(
       if (pjob->ji_wattr[JOB_ATR_exec_host].at_flags & ATR_VFLAG_SET)
         {
         char *tmp;
-        get_svr_attr_l(SRV_ATR_CrayEnabled, &cray_enabled);
 
-        if ((cray_enabled == TRUE) &&
+        if ((cray_enabled == true) &&
             (pjob->ji_wattr[JOB_ATR_login_node_id].at_val.at_str != NULL))
           {
           tmp = parse_servername(pjob->ji_wattr[JOB_ATR_login_node_id].at_val.at_str, &d);
@@ -2846,7 +2881,7 @@ void catch_abort(
   sigaction(SIGTRAP, &act, NULL);
   sigaction(SIGSYS, &act, NULL);
 
-  log_err(sig, "mom_main", (char *)"Caught fatal core signal");
+  log_err(sig, __func__, "Caught fatal core signal");
 
   rlimit.rlim_cur = RLIM_INFINITY;
   rlimit.rlim_max = RLIM_INFINITY;

@@ -112,6 +112,7 @@ int              ignmem = 0;
 int              igncput = 0;
 int              ignvmem = 0; 
 /* end policies */
+bool             check_rur = true; /* on by default */
 int              spoolasfinalname = 0;
 int              maxupdatesbeforesending = MAX_UPDATES_BEFORE_SENDING;
 char            *apbasil_path     = NULL;
@@ -217,6 +218,7 @@ struct passwd *getpwnam_ext(char **user_buffer, char *user_name);
 /* NOTE:  must adjust RM_NPARM in resmom.h to be larger than number of parameters
           specified below */
 
+unsigned long setrur(const char *);
 unsigned long setxauthpath(const char *);
 unsigned long setrcpcmd(const char *);
 unsigned long setpbsclient(const char *);
@@ -377,6 +379,7 @@ struct specials special[] = {
   { "mom_hierarchy_retry_time",  setmomhierarchyretrytime},
   { "jobdirectory_sticky", setjobdirectorysticky},
   { "cuda_visible_devices", setcudavisibledevices},
+  { "cray_check_rur",       setrur },
   { NULL,                  NULL }
   };
 
@@ -480,6 +483,21 @@ char *tokcpy(
   }  /* END tokcpy() */
 
 
+unsigned long setrur(
+
+  const char *value)
+  
+  {
+  int enable;
+
+  if ((enable = setbool(value)) != -1)
+    {
+    check_rur = true;
+    return(1);
+    }
+    
+  return(0); /* error */
+  }/* end setrur() */
 
 
 unsigned long setidealload(
@@ -1438,7 +1456,7 @@ u_long setjoboomscoreadjust(
   v = atoi(value);
 
   /* check for allowed value range */
-  if( v >= -17 && v <= 15 ) 
+  if( v >= -1000 && v <= 1000 ) 
     {
     job_oom_score_adjust = v;
     /* ok */
@@ -1888,7 +1906,7 @@ u_long usecp(
 
   *pnxt++ = '\0';
 
-  cph.cph_hosts = value;
+  cph.cph_from = value;
   cph.cph_to = skipwhite(pnxt);
 
   pcphosts.push_back(cph);
@@ -3065,8 +3083,6 @@ const char *reqvarattr(
 
 
 
-
-
 const char *reqgres(
 
   struct rm_attribute *attrib)  /* I (ignored) */
@@ -3157,9 +3173,12 @@ const char *reqgres(
       strncat(GResBuf, "+", sizeof(GResBuf) - 1 - strlen(GResBuf));
       }
 
-    snprintf(tmpLine, 1024, "%s:%s",
-             cp->c_name,
-             cp->c_u.c_value);
+    {
+      // check if shell escape needed
+      char *p = conf_res(cp->c_u.c_value, NULL);
+      snprintf(tmpLine, 1024, "%s:%s",
+               cp->c_name, p);
+    }
 
     strncat(GResBuf, tmpLine, (sizeof(GResBuf) - strlen(GResBuf) - 1));
     }  /* END for (cp) */

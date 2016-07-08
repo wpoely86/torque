@@ -139,6 +139,9 @@ struct job_array
                          is restarted (cleanly) before the array is 
                          completely setup */
 
+  bool   ai_ghost_recovered; // true if the array file couldn't be recovered but we made this in 
+                             // order to not lose sub-jobs
+
   pthread_mutex_t *ai_mutex;
 
   /* this info is saved in the array file */
@@ -179,7 +182,7 @@ int  array_save(job_array *pa);
 int  array_save(job_array *pa);
 void array_get_parent_id(char *job_id, char *parent_id);
 
-job_array *get_array(char *id);
+job_array *get_array(const char *id);
 int array_recov(const char *path, job_array **pa);
 
 int delete_array_range(job_array *pa, char *range);
@@ -192,6 +195,7 @@ void hold_job(pbs_attribute *,void *);
 int modify_array_range(job_array *,char *,svrattrl *,struct batch_request *,int);
 int modify_job(void **,svrattrl *,struct batch_request *,int, int);
 
+void update_slot_held_jobs(job_array *pa, int num_to_release);
 void update_array_values(job_array *,int,enum ArrayEventsEnum, const char *job_id, long job_atr_hold, int job_exit_status);
 
 int register_array_depend(job_array*,struct batch_request *,int,int);

@@ -622,7 +622,7 @@ int process_state_str(
 
   if (np->nd_state & INUSE_NOHIERARCHY)
     {
-    sprintf(log_buf, "node %s has not received its hiearachy yet.",
+    sprintf(log_buf, "node %s has not received its hierarchy yet.",
       np->get_name());
 
     log_err(-1, __func__, log_buf);
@@ -733,6 +733,53 @@ int save_node_status(
 
 
 
+#ifdef PENABLE_LINUX_CGROUPS
+/*
+ * update_layout_if_needed()
+ *
+ * Updates the layout of pnode if 1) we don't have one or 2) the thread count has changed
+ *
+ * @param pnode - the node in question
+ * @param layout - the string specifying the layout
+ */
+
+void update_layout_if_needed(
+
+  pbsnode           *pnode,
+  const std::string &layout)
+
+  {
+  char log_buf[LOCAL_LOG_BUF_SIZE];
+
+  if (pnode->nd_layout.is_initialized() == false)
+    {
+    pnode->nd_layout.reinitialize_from_json(layout);
+    }
+  else if ((pnode->nd_layout.getTotalThreads() != pnode->nd_slots.get_total_execution_slots()) &&
+           (pnode->nd_job_usages.size() == 0))
+    {
+    int old_count = pnode->nd_layout.getTotalThreads();
+    int new_count = pnode->nd_slots.get_total_execution_slots();
+
+    // If the number of np for the node has changed, then we should get a new layout as long
+    // as we don't have active jobs
+    Machine m(layout);
+    pnode->nd_layout = m;
+
+    if (LOGLEVEL >= 3)
+      {
+      snprintf(log_buf, sizeof(log_buf),
+        "Node %s appears to have had it's core/thread count updated. The layout has now also been updated from %d to %d.",
+        pnode->get_name(), old_count, new_count);
+
+      log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_NODE, __func__, log_buf);
+      }
+    }
+  } // END update_layout_if_needed()
+#endif
+
+
+
 int process_status_info(
 
   const char               *nd_name,
@@ -744,6 +791,7 @@ int process_status_info(
   long            mom_job_sync = FALSE;
   long            auto_np = FALSE;
   long            down_on_error = FALSE;
+  long            note_append_on_error = FALSE;
   int             dont_change_state = FALSE;
   pbs_attribute   temp;
   int             rc = PBSE_NONE;
@@ -751,6 +799,7 @@ int process_status_info(
 
   get_svr_attr_l(SRV_ATR_MomJobSync, &mom_job_sync);
   get_svr_attr_l(SRV_ATR_AutoNodeNP, &auto_np);
+  get_svr_attr_l(SRV_ATR_NoteAppendOnError, &note_append_on_error);
   get_svr_attr_l(SRV_ATR_DownOnError, &down_on_error);
 
   /* Before filling the "temp" pbs_attribute, initialize it.
@@ -841,10 +890,7 @@ int process_status_info(
 #ifdef PENABLE_LINUX_CGROUPS
     else if (!strncmp(str, "layout", 6))
       {
-      if (current->nd_layout.is_initialized() == false)
-        {
-        current->nd_layout.reinitialize_from_json(status_info[i]);
-        }
+      update_layout_if_needed(current, status_info[i]);
 
       continue;
       }
@@ -884,7 +930,11 @@ int process_status_info(
         {
         update_node_state(current, INUSE_DOWN);
         dont_change_state = TRUE;
-        set_note_error(current, str);
+
+        if (note_append_on_error == TRUE)
+          {
+          set_note_error(current, str);
+          }
         }
       }
     else if (!strncmp(str,"macaddr=",8))
@@ -933,6 +983,10 @@ int process_status_info(
         {
         handle_auto_np(current, str);
         }
+      }
+    else if (!strncmp(str, "version=", 8))
+      {
+      current->set_version(str + 8);
       }
     } /* END processing strings */
 

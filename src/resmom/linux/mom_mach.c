@@ -856,34 +856,54 @@ proc_mem_t *get_proc_mem(void)
  */
 
 static int oom_adj(int score)
-{
+  
+  {
+  pid_t pid;
+  int   rc;
+  int   fd;
 
-   pid_t pid;
-   int rc,fd;
+  char oom_adj_path[PATH_MAX] = "";
+  char adj_value[128] = "";
+   
+  /* max valid values are -1000 to 1000 */
+  if ((score > 1000) ||
+      (score < -1000))
+    return -1;
+  
+  pid = getpid();
+  
+  snprintf(oom_adj_path, sizeof(oom_adj_path), "/proc/%d/oom_score_adj", pid);
+   
+  /* try and open the oom_score_adj file for writing first */
+  /* if it fails to open then try oom_adj */
+  if ((fd = open(oom_adj_path, O_RDWR)) == -1 )
+    {
+    if (score < -17)
+      score = -17;
+    else if (score > 15)
+      score = 15;
+     
+    snprintf(oom_adj_path, sizeof(oom_adj_path), "/proc/%d/oom_adj", pid);
 
-   char oom_adj_path[PATH_MAX] = "";
-   char adj_value[128] = "";
-   /* valid values are -17 to 15 */
-   if ( score > 15 || score < -17 )
+    if ((fd = open(oom_adj_path, O_RDWR)) == -1)
       return -1;
-
-   pid = getpid();
-
-   if ( snprintf(oom_adj_path, sizeof(oom_adj_path), "/proc/%d/oom_adj", pid) < 0 )
+     
+    if (snprintf(adj_value,sizeof(adj_value),"%d",score) < 0)
       return -1;
+     
+    rc = write(fd,adj_value,strlen(adj_value));
+     
+    close(fd);
+    return rc;   
+    }
 
-   if ( ( fd = open(oom_adj_path, O_RDWR) ) == -1 )
-      return -1;
+  snprintf(adj_value,sizeof(adj_value),"%d",score);
 
-   if (snprintf(adj_value,sizeof(adj_value),"%d",score) < 0)
-      return -1;
+  rc = write(fd,adj_value,strlen(adj_value));
 
-   rc = write(fd,adj_value,strlen(adj_value));
-
-   close(fd);
-   return rc;
-
-}
+  close(fd);
+  return rc;
+  }
 
 
 void dep_initialize(void)
@@ -904,7 +924,7 @@ void dep_initialize(void)
   if (mom_oom_immunize != 0)
     {
 
-    if (oom_adj(-17) < 0)
+    if (oom_adj(-1000) < 0)
       {
       log_record(
         PBSEVENT_SYSTEM,
@@ -1076,10 +1096,10 @@ bool injob(
     }
 
   /* Next, check the job's tasks to see if they match the session id */
-  for (task *ptask = (task *)GET_NEXT(pjob->ji_tasks);
-       ptask != NULL;
-       ptask = (task *)GET_NEXT(ptask->ti_jobtask))
+  for (unsigned int i = 0; i < pjob->ji_tasks->size(); i++)
     {
+    task *ptask = pjob->ji_tasks->at(i);
+
     if (job_sid_of_pid == ptask->ti_qs.ti_sid)
       return(true);
     }
@@ -2187,10 +2207,8 @@ int mom_set_limits(
 
   if (LOGLEVEL >= 5)
     {
-    sprintf(log_buffer, "%s(%s,%s) completed",
-            __func__,
-            (pjob != NULL) ? pjob->ji_qs.ji_jobid : "NULL",
-            (set_mode == SET_LIMIT_SET) ? "set" : "alter");
+    sprintf(log_buffer, "%s(%s,%s) completed", __func__, pjob->ji_qs.ji_jobid,
+      (set_mode == SET_LIMIT_SET) ? "set" : "alter");
 
     log_record(PBSEVENT_SYSTEM, 0, __func__, log_buffer);
 
@@ -3203,17 +3221,17 @@ int kill_task(
                 sprintf(log_buffer, "%s: killing pid %d task %d with sig %d",
                   __func__, ps->pid, ptask->ti_qs.ti_task, sig);
 
-                log_record(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, ptask->ti_qs.ti_parentjobid, log_buffer);
-
                 if (pg == 0)
                   {
                   if (sig != SIGTERM)
                     {
+                    log_record(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, ptask->ti_qs.ti_parentjobid, log_buffer);
                     kill(ps->pid, sig);
                     }
                   /* make sure we only send a SIGTERM one time */
                   else if (pjob->ji_sigtermed_processes->find(ps->pid) == pjob->ji_sigtermed_processes->end())
                     {
+                    log_record(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, ptask->ti_qs.ti_parentjobid, log_buffer);
                     killpg(ps->pid, SIGTERM);
                     pjob->ji_sigtermed_processes->insert(ps->pid);
                     }
@@ -3222,10 +3240,12 @@ int kill_task(
                   {
                   if (sig != SIGTERM)
                     {
+                    log_record(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, ptask->ti_qs.ti_parentjobid, log_buffer);
                     killpg(ps->pid, sig);
                     }
                   else if (pjob->ji_sigtermed_processes->find(ps->pid) == pjob->ji_sigtermed_processes->end())
                     {
+                    log_record(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, ptask->ti_qs.ti_parentjobid, log_buffer);
                     killpg(ps->pid, SIGTERM);
                     pjob->ji_sigtermed_processes->insert(ps->pid);
                     }
@@ -3889,7 +3909,6 @@ const char *sessions(
 #ifdef NUMA_SUPPORT
   char               mom_check_name[PBS_MAXSERVERNAME];
   job               *pjob;
-  task              *ptask;
 #else
   proc_stat_t       *ps;
   struct pidl       *sids  = NULL, *sl = NULL, *sp;
@@ -3933,10 +3952,10 @@ const char *sessions(
 
     /* Show all tasks registered for this job */
 
-    for (ptask = (task *)GET_NEXT(pjob->ji_tasks);
-         ptask != NULL;
-         ptask = (task *)GET_NEXT(ptask->ti_jobtask))
+    for (unsigned int i = 0; i < pjob->ji_tasks->size(); i++)
       {
+      task *ptask = pjob->ji_tasks->at(i);
+
       if (ptask->ti_qs.ti_status != TI_STATE_RUNNING)
         continue;
 
@@ -3958,7 +3977,7 @@ const char *sessions(
       s += strlen(s);
       nsids++;
 
-      } /* END for(ptask) */
+      } /* END for each task */
 
     } /* END for(pjob) */
 
@@ -4811,8 +4830,6 @@ void scan_non_child_tasks(void)
     {
     pJob = *iter;
 
-    task *pTask;
-
     long job_start_time = 0;
     long job_session_id = 0;
     long session_start_time = 0;
@@ -4832,10 +4849,10 @@ void scan_non_child_tasks(void)
       session_start_time = (long)ps->start_time;
       }
 
-    for (pTask = (task *)(GET_NEXT(pJob->ji_tasks));
-        pTask != NULL;
-         pTask = (task *)(GET_NEXT(pTask->ti_jobtask)))
+    for (unsigned int i = 0; i < pJob->ji_tasks->size(); i++)
       {
+      task *pTask = pJob->ji_tasks->at(i);
+
 #ifdef PENABLE_LINUX26_CPUSETS
       struct pidl   *pids = NULL;
       struct pidl   *pp;
@@ -4849,9 +4866,10 @@ void scan_non_child_tasks(void)
        * Check for tasks that were exiting when mom went down, set back to
        * running so we can reprocess them and send the obit
        */
-      if ((first_time) && (pTask->ti_qs.ti_sid != 0) &&
-         ((pTask->ti_qs.ti_status == TI_STATE_EXITED) ||
-         (pTask->ti_qs.ti_status == TI_STATE_DEAD)))
+      if ((first_time) &&
+          (pTask->ti_qs.ti_sid != 0) &&
+          ((pTask->ti_qs.ti_status == TI_STATE_EXITED) ||
+           (pTask->ti_qs.ti_status == TI_STATE_DEAD)))
         {
 
         if (LOGLEVEL >= 7)
@@ -4862,6 +4880,7 @@ void scan_non_child_tasks(void)
 
           log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, pJob->ji_qs.ji_jobid, log_buffer);
           }
+
         pTask->ti_qs.ti_status = TI_STATE_RUNNING;
         }
 

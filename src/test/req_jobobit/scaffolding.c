@@ -453,6 +453,12 @@ void add_to_completed_jobs(work_task *ptask) {}
 pbsnode::pbsnode() {}
 pbsnode::~pbsnode() {}
 
+int pbsnode::get_version() const
+
+  {
+  return(0);
+  }
+
 int pbsnode::unlock_node(const char *id, const char *msg, int level)
   {
   return(0);
@@ -482,4 +488,9 @@ int reservation_holder::remove_alps_reservation(
 
   {
   return(PBSE_NONE);
+  }
+
+void set_reply_type(struct batch_reply *preply, int type)
+  {
+  preply->brp_choice = type;
   }

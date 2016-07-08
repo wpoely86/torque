@@ -114,7 +114,7 @@ int unlock_node(struct pbsnode *the_node, const char *id, const char *msg, int l
   exit(1);
   }
 
-job_array *get_array(char *id)
+job_array *get_array(const char *id)
   {
   return(NULL);
   }
@@ -357,4 +357,9 @@ int pbsnode::unlock_node(const char *msg, const char *id, int level)
 bool pbsnode::hasprop(std::vector<prop> *needed) const
   {
   return(true);
+  }
+
+  void set_reply_type(struct batch_reply *preply, int type)
+  {
+  preply->brp_choice = type;
   }
