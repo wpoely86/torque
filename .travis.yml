@@ -14,6 +14,9 @@ matrix:
   include:
     - os: linux
       compiler: gcc
+      addons:
+        apt:
+          packages: [*general]
       env:
         - OUR_CC=gcc OUR_CXX=g++
 
@@ -55,7 +58,7 @@ matrix:
 
 install:
     - ./autogen.sh
-    - CC=$OUR_CC CXX=$OUR_CXX ./configure --with-check --wih-pam --enable-acct-x --enable-drmaa --enable-cgroups
+    - CC=$OUR_CC CXX=$OUR_CXX ./configure --with-check --with-pam --enable-acct-x --enable-drmaa --enable-cgroups
     - make -j2
 
 script:
