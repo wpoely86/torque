@@ -60,8 +60,7 @@ install:
     - wget -q -O hwloc.tar.gz https://github.com/open-mpi/hwloc/archive/hwloc-1.11.4.tar.gz
     - tar -xzf hwloc.tar.gz
     - mkdir $HOME/opt
-    - cd hwloc-*/
-    - ./autogen.sh && ./configure --prefix=$HOME/opt && make && make install
+    - pushd hwloc-*/ && ./autogen.sh && ./configure --prefix=$HOME/opt && make && make install && popd
     - export PKG_CONFIG_PATH=$HOME/opt/lib/pkgconfig:$PKG_CONFIG_PATH
     - pkg-config --cflags --libs hwloc
 script:
