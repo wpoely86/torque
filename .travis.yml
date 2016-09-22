@@ -17,9 +17,10 @@ matrix:
       compiler: gcc
       addons:
         apt:
-          packages: [*general]
+          sources: ['ubuntu-toolchain-r-test']
+          packages: [*general, 'gcc-4.4', 'g++-4.4']
       env:
-        - OUR_CC=gcc OUR_CXX=g++ OUR_GCOV=gcov
+        - OUR_CC=gcc-4.4 OUR_CXX=g++-4.4 OUR_GCOV=gcov-4.4
 
     - os: linux
       compiler: gcc
@@ -29,15 +30,6 @@ matrix:
           packages: [*general, 'gcc-4.8', 'g++-4.8']
       env:
         - OUR_CC=gcc-4.8 OUR_CXX=g++-4.8 OUR_GCOV=gcov-4.8
-
-    - os: linux
-      compiler: gcc
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: [*general, 'gcc-4.9', 'g++-4.9']
-      env:
-        - OUR_CC=gcc-4.9 OUR_CXX=g++-4.9 OUR_GCOV=gcov-4.9
 
     - os: linux
       compiler: gcc
