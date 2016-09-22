@@ -1,7 +1,7 @@
 language: cpp
 addons:
   apt:
-    packages:
+    packages: &general
         - check
         - libboost-dev
         - libreadline-dev
@@ -22,7 +22,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.8', 'g++-4.8']
+          packages: [*general, 'gcc-4.8', 'g++-4.8']
       env:
         - OUR_CC=gcc-4.8 OUR_CXX=g++-4.8
 
@@ -31,7 +31,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-4.9', 'g++-4.9']
+          packages: [*general, 'gcc-4.9', 'g++-4.9']
       env:
         - OUR_CC=gcc-4.9 OUR_CXX=g++-4.9
 
@@ -40,7 +40,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-5', 'g++-5']
+          packages: [*general, 'gcc-5', 'g++-5']
       env:
         - OUR_CC=gcc-5 OUR_CXX=g++-5
 
@@ -49,13 +49,13 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['gcc-6', 'g++-6']
+          packages: [*general, 'gcc-6', 'g++-6']
       env:
         - OUR_CC=gcc-6 OUR_CXX=g++-6
 
 install:
     - ./autogen.sh
-    - CC=$OUR_CC CXX=$OUR_CXX ./configure --with-check --enable-acct-x --enable-drmaa --enable-pam --enable-cgroups
+    - CC=$OUR_CC CXX=$OUR_CXX ./configure --with-check --wih-pam --enable-acct-x --enable-drmaa --enable-cgroups
     - make -j2
 
 script:
