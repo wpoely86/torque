@@ -69,8 +69,8 @@ script:
     - ./autogen.sh
     - CC=$OUR_CC CXX=$OUR_CXX ./configure --with-check --with-pam --enable-acct-x --enable-drmaa --enable-cgroups --with-hwloc-path=$HOME/opt
     - make -j2 &> build.log
-    - make check -k
-    - make distcheck
+    - make check -k V=0
+    - make distcheck V=0
 
 after_failure:
     - cat config.log

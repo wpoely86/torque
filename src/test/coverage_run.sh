@@ -8,6 +8,9 @@
 
 F=`pwd`
 
+echo "F: $F"
+echo "pwd: $(pwd)"
+
 FILENAME=`basename $F`
 
 if [ "x$FILENAME" = "xMAssertAbort" ] ; then
@@ -20,7 +23,7 @@ fi
 
 echo "File: $FILENAME"
 
-cp -p .libs/${FILENAME}.gc* . 
+cp -p .libs/${FILENAME}.gc* .
 
 # Extract the gcov results for the UUT
 RESULTS=$(gcov ${FILENAME} | grep -A 2 ${FILENAME}.c)
@@ -40,6 +43,6 @@ PARSED_RESULT="TOTALCOV -- ${FILENAME}: Lines(${LINES}) - ${PERCENT}"
 
 # Output the results
 echo -e "\033[1;33m$PARSED_RESULT\033[0m"
-                      
+
 exit 0
-  
+
