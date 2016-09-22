@@ -2,15 +2,20 @@ language: cpp
 addons:
   apt:
     sources:
-        # Clang 3.8
+        # Clang 3.7
         - llvm-toolchain-precise-3.7
-        # Newer CMake
-        - george-edison55-precise-backports
         # Newer GCC
         - ubuntu-toolchain-r-test
-
-script: ./autogen.sh && ./configure --with-check && make && make check -k && make distcheck
+    packages:
+        - check
 
 compiler:
   - clang
   - gcc
+
+script:
+    - ./autogen.sh
+    - ./configure --with-check
+    - make
+    - make check -k
+    - make distcheck
