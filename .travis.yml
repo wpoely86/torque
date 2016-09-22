@@ -57,10 +57,16 @@ matrix:
         - OUR_CC=gcc-6 OUR_CXX=g++-6
 
 install:
-    - ./autogen.sh
-    - CC=$OUR_CC CXX=$OUR_CXX ./configure --with-check --with-pam --enable-acct-x --enable-drmaa
-    - make -j2
-
+    - wget -q -O hwloc.tar.gz https://github.com/open-mpi/hwloc/archive/hwloc-1.11.4.tar.gz
+    - tar -xzf hwloc.tar.gz
+    - mkdir $HOME/opt
+    - cd hwloc-*/
+    - ./autogen.sh && ./configure --prefix=$HOME/opt && make && make install
+    - export PKG_CONFIG_PATH=$HOME/opt/lib/pkgconfig:$PKG_CONFIG_PATH
+    - pkg-config --cflags --libs hwloc
 script:
+    - ./autogen.sh
+    - CC=$OUR_CC CXX=$OUR_CXX ./configure --with-check --with-pam --enable-acct-x --enable-drmaa --enable-cgroups
+    - make -j2
     - make check -k
     - make distcheck
