@@ -2,12 +2,15 @@ language: cpp
 addons:
   apt:
     sources:
-        # Clang 3.7
-        - llvm-toolchain-precise-3.7
+        # Clang 3.9
+        - llvm-toolchain-precise-3.9
         # Newer GCC
         - ubuntu-toolchain-r-test
     packages:
         - check
+        - libboost-dev libreadline-dev libpam0g-dev libssl-dev libhwloc-dev libxml2-dev libcr-dev
+        - clang-3.9
+        - gcc-5 g++-5
 
 compiler:
   - clang
