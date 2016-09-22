@@ -62,10 +62,16 @@ install:
     - mkdir $HOME/opt
     - pushd hwloc-*/ && ./autogen.sh && ./configure --prefix=$HOME/opt && make && make install && popd
     - export PKG_CONFIG_PATH=$HOME/opt/lib/pkgconfig:$PKG_CONFIG_PATH
-    - pkg-config --cflags --libs hwloc
+    - export LD_LIBRARY_PATH=$HOME/opt/lib:$LD_LIBRARY_PATH
+    - pkg-config --print-errors --cflags --libs "hwloc >= 1.9"
+
 script:
     - ./autogen.sh
     - CC=$OUR_CC CXX=$OUR_CXX ./configure --with-check --with-pam --enable-acct-x --enable-drmaa --enable-cgroups
     - make -j2
     - make check -k
     - make distcheck
+
+after_failure:
+    - set
+    - cat config.log
