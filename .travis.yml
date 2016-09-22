@@ -58,7 +58,7 @@ matrix:
 
 install:
     - ./autogen.sh
-    - CC=$OUR_CC CXX=$OUR_CXX ./configure --with-check --with-pam --enable-acct-x --enable-drmaa --enable-cpuset
+    - CC=$OUR_CC CXX=$OUR_CXX ./configure --with-check --with-pam --enable-acct-x --enable-drmaa
     - make -j2
 
 script:
