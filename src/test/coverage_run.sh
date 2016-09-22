@@ -8,9 +8,6 @@
 
 F=`pwd`
 
-echo "F: $F"
-echo "pwd: $(pwd)"
-
 FILENAME=`basename $F`
 
 if [ "x$FILENAME" = "xMAssertAbort" ] ; then
