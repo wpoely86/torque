@@ -60,8 +60,8 @@ install:
 
 script:
     - ./autogen.sh
-    - CC=$OUR_CC CXX=$OUR_CXX ./configure --with-check --with-pam --enable-acct-x --enable-drmaa --enable-cgroups --with-hwloc-path=$HOME/opt
-    - make -j2 V=0
+    - CC=$OUR_CC CXX=$OUR_CXX ./configure --with-check --with-pam --enable-acct-x --enable-drmaa --enable-cgroups
+    - make V=0
     - set -o pipefail
     - make check -k V=0 | tee checks.txt
     - make distcheck V=0
