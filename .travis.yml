@@ -48,24 +48,26 @@ matrix:
         - OUR_CC=gcc-6 OUR_CXX=g++-6 OUR_GCOV=gcov-6
 
 install:
-    - wget -q -O hwloc.tar.gz https://github.com/open-mpi/hwloc/archive/hwloc-1.11.4.tar.gz
-    - tar -xzf hwloc.tar.gz
-    - mkdir $HOME/opt
-    - pushd hwloc-*/ && ./autogen.sh && ./configure --prefix=$HOME/opt && make && make install && popd
-    - wget -q -O check.tar.gz https://github.com/libcheck/check/releases/download/0.10.0/check-0.10.0.tar.gz
-    - tar -xvf check.tar.gz
-    - pushd check-*/ && ./configure --prefix=$HOME/opt && make && make install && popd
+    - cd $HOME
+    - mkdir -p $HOME/opt/{bin,lib,lib/pkgconfig}
     - export PKG_CONFIG_PATH=$HOME/opt/lib/pkgconfig:$PKG_CONFIG_PATH
     - export LD_LIBRARY_PATH=$HOME/opt/lib:$LD_LIBRARY_PATH
     - export PATH=$HOME/opt/bin:$PATH
     - ln -s $(which $OUR_GCOV) $HOME/opt/bin/gcov
+    - wget -q -O hwloc.tar.gz https://github.com/open-mpi/hwloc/archive/hwloc-1.11.4.tar.gz
+    - tar -xzf hwloc.tar.gz
+    - pushd hwloc-*/ && ./autogen.sh && ./configure --prefix=$HOME/opt && make && make install && popd
+    - wget -q -O check.tar.gz https://github.com/libcheck/check/releases/download/0.10.0/check-0.10.0.tar.gz
+    - tar -xzf check.tar.gz
+    - pushd check-*/ && ./configure --prefix=$HOME/opt --enable-gcov && make && make install && popd
 
 script:
+    - cd $TRAVIS_BUILD_DIR
     - ./autogen.sh
     - CC=$OUR_CC CXX=$OUR_CXX ./configure --with-check --with-pam --enable-acct-x --enable-drmaa --enable-cgroups
-    - make V=0
+    - make -j2 V=0
     - set -o pipefail
-    - make check -k V=0 | tee checks.txt
+    - make -j2 -k check V=0 | tee checks.txt
     - make distcheck V=0
     - python parse_cov_results.py checks.txt
     - python cov_file_results.py
