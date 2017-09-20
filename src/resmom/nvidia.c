@@ -1285,7 +1285,7 @@ int get_gpu_mode(
 
 int set_gpu_req_modes(
     
-    std::vector<unsigned int> &gpu_indices, 
+    std::vector<int> &gpu_indices,
     int                        gpu_flags,
     mom_job                   *pjob)
 
@@ -1430,14 +1430,14 @@ int setup_gpus_for_job(
 
 #ifdef PENABLE_LINUX_CGROUPS
   /* if there are no gpus, do nothing */
-  if ((pjob->ji_wattr[JOB_ATR_gpus_reserved].at_flags & ATR_VFLAG_SET) == 0)
+  if ((pjob->get_attr(JOB_ATR_gpus_reserved)->at_flags & ATR_VFLAG_SET) == 0)
     return(PBSE_NONE);
 
   /* if there are no gpu flags, do nothing */
-  if ((pjob->ji_wattr[JOB_ATR_gpu_flags].at_flags & ATR_VFLAG_SET) == 0)
+  if ((pjob->get_attr(JOB_ATR_gpu_flags)->at_flags & ATR_VFLAG_SET) == 0)
     return(PBSE_NONE);
 
-  gpus_reserved = pjob->ji_wattr[JOB_ATR_gpus_reserved].at_val.at_str;
+  gpus_reserved = pjob->get_attr(JOB_ATR_gpus_reserved)->at_val.at_str;
 
   if (gpus_reserved.length() == 0)
     return(PBSE_NONE);
@@ -1445,12 +1445,12 @@ int setup_gpus_for_job(
   find_range_in_cpuset_string(gpus_reserved, gpu_range);
   translate_range_string_to_vector(gpu_range.c_str(), gpu_indices);
 
-  gpu_flags = pjob->ji_wattr[JOB_ATR_gpu_flags].at_val.at_long;
+  gpu_flags = pjob->get_attr(JOB_ATR_gpu_flags)->at_val.at_long;
 
   if (LOGLEVEL >= 7)
     {
     sprintf(log_buffer, "job %s has gpus_reserved %s gpu_flags %d",
-      pjob->ji_qs.ji_jobid, gpu_range.c_str(), gpu_flags);
+      pjob->get_jobid(), gpu_range.c_str(), gpu_flags);
 
     log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, __func__, log_buffer);
     }
@@ -1458,7 +1458,7 @@ int setup_gpus_for_job(
   rc = set_gpu_req_modes(gpu_indices, gpu_flags, pjob);
   if (rc != PBSE_NONE)
     {
-    sprintf(log_buffer, "Failed to set gpu modes for job %s. error %d", pjob->ji_qs.ji_jobid, rc);
+    sprintf(log_buffer, "Failed to set gpu modes for job %s. error %d", pjob->get_jobid(), rc);
     log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, __func__, log_buffer);
     }
 #else
