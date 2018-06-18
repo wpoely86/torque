@@ -1444,6 +1444,10 @@ bool Chip::getContiguousCoreVector(
     {
     /* Can't get contiguous cores. Just get them where you can find them */
     // Get the core indices we will use
+ 
+    // clear any previous results
+    slots.clear();
+
     j = 0;
     for (int i = 0; i < execution_slots_per_task; i++)
       {
