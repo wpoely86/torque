@@ -970,10 +970,12 @@ void stat_update(
           preq->rq_ind.rq_status.rq_id, pjob->ji_last_reported_time);
         log_event(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, __func__, log_buf);
         
+        /*
         svr_setjobstate(pjob, JOB_STATE_QUEUED, JOB_SUBSTATE_ABORT, FALSE);
         rel_resc(pjob);
         job_mutex.set_unlock_on_exit(false);
         job_abt(&pjob, "Job does not exist on node");
+        */
 
         /* TODO, if the job is rerunnable we should set its state back to queued */
         }
