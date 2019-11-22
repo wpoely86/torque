@@ -2872,11 +2872,13 @@ struct objname *
   {
 
   struct objname *obj;
+  const char *def_server;
 
   obj = new_objname();
-  /* default server name is the NULL string */
-  Mstring(obj -> obj_name, 1);
-  obj->obj_name[0] = '\0';
+  def_server = pbs_default();
+
+  Mstring(obj -> obj_name, strlen(def_server) + 1);
+  strcpy(obj->obj_name, def_server);
   obj->svr_name = obj->obj_name;
   obj->obj_type = MGR_OBJ_SERVER;
 
