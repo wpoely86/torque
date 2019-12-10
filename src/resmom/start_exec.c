@@ -4597,7 +4597,19 @@ int set_job_cgroup_memory_limits(
       }
     }
 
-  if ((swap_limit = get_swap_limit_for_this_host(pjob, cr, string_hostname)) != 0)
+  swap_limit = get_swap_limit_for_this_host(pjob, cr, string_hostname);
+  if (swap_limit == 0)
+  {
+      swap_limit = mem_limit;
+
+      if (LOGLEVEL >= 6)
+      {
+          printf(log_buffer, "Adjust swap limit to %lld for %s.", swap_limit, pjob->ji_qs.ji_jobid);
+          log_ext(-1, __func__, log_buffer, LOG_DEBUG);
+      }
+  }
+
+  if (swap_limit != 0)
     {
     if (mem_limit == 0)
       {
