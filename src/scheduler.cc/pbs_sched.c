@@ -138,7 +138,7 @@ char  *configfile = NULL; /* name of config file */
 char  *oldpath;
 extern char *msg_daemonname;
 char  **glob_argv;
-char  usage[] = "[-S port][-d home][-p output][-c config][-a alarm]";
+char  usage[] = "[-S port][-d home][-p output][-c config][-a alarm][-H server_hostname]";
 
 struct sockaddr_in saddr;
 sigset_t allsigs;
@@ -735,6 +735,7 @@ int main(
   unsigned int port;
   const char  *dbfile = "sched_out";
   int   server_sock;
+  char  *server_name = NULL;
 
   struct sigaction act;
   sigset_t oldsigs;
@@ -771,7 +772,7 @@ int main(
 
   opterr = 0;
 
-  while ((c = getopt(argc, argv, "L:S:R:d:p:c:a:-:")) != EOF)
+  while ((c = getopt(argc, argv, "L:S:R:d:p:c:a:-:H:")) != EOF)
     {
     switch (c)
       {
@@ -847,6 +848,10 @@ int main(
 
       case '?':
         errflg = 1;
+        break;
+
+      case 'H':
+        server_name = optarg;
         break;
       }
     }
@@ -949,11 +954,18 @@ int main(
     }
   pthread_mutex_unlock(&log_mutex);
 
-  if (gethostname(host, sizeof(host)) == -1)
-    {
-    log_err(errno, id, (char *)"gethostname");
-    die(0);
-    }
+  if(server_name)
+  {
+    strncpy(host, server_name, 100);
+  }
+  else
+  {
+      if (gethostname(host, sizeof(host)) == -1)
+        {
+        log_err(errno, id, (char *)"gethostname");
+        die(0);
+        }
+  }
 
   if ((hp = gethostbyname(host)) == NULL)
     {
@@ -1151,6 +1163,10 @@ int main(
 #endif
 
   sprintf(log_buffer, "%s startup pid %ld", argv[0], (long)pid);
+
+  log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, id, log_buffer);
+
+  sprintf(log_buffer, "Listen on hostname %s", host);
 
   log_record(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, id, log_buffer);
 
